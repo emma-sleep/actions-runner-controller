@@ -106,6 +106,8 @@ env:
     value: "123"
 securityContext:
   privileged: true
+  runAsUser: 0
+  runAsGroup: 0
 {{- if (ge (.Capabilities.KubeVersion.Minor | int) 29) }}
 restartPolicy: Always
 {{- end }}

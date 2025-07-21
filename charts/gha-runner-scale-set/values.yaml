@@ -464,3 +464,7 @@ namespaceOverride: ""
 #       key: value
 #     annotations:
 #       key: value
+
+# dind:
+#   additionalVolumeMounts: []
+#   additionalEnvs: []

@@ -40,6 +40,7 @@ githubConfigSecret:
 ##   > kubectl create secret generic pre-defined-secret --namespace=my_namespace --from-literal=github_token='ghp_your_pat'
 ##   For a pre-defined secret using GitHub App, the secret needs to be created like this:
 ##   > kubectl create secret generic pre-defined-secret --namespace=my_namespace --from-literal=github_app_id=123456 --from-literal=github_app_installation_id=654321 --from-literal=github_app_private_key='-----BEGIN CERTIFICATE-----*******'
+# githubConfigSecret: pre-defined-secret
 
 ## proxy can be used to define proxy settings that will be used by the
 ## controller, the listener and the runner of this scale set.
@@ -89,24 +90,24 @@ githubConfigSecret:
 #   runnerMountPath: /usr/local/share/ca-certificates/
 
 # keyVault:
-  # Available values: "azure_key_vault"
-  # type: ""
-  # Configuration related to azure key vault
-  # azure_key_vault:
-  #   url: ""
-  #   client_id: ""
-  #   tenant_id: ""
-  #   certificate_path: ""
-    # proxy:
-    #   http:
-    #     url: http://proxy.com:1234
-    #     credentialSecretRef: proxy-auth # a secret with `username` and `password` keys
-    #   https:
-    #     url: http://proxy.com:1234
-    #     credentialSecretRef: proxy-auth # a secret with `username` and `password` keys
-    #   noProxy:
-    #     - example.com
-    #     - example.org
+# Available values: "azure_key_vault"
+# type: ""
+# Configuration related to azure key vault
+# azure_key_vault:
+#   url: ""
+#   client_id: ""
+#   tenant_id: ""
+#   certificate_path: ""
+# proxy:
+#   http:
+#     url: http://proxy.com:1234
+#     credentialSecretRef: proxy-auth # a secret with `username` and `password` keys
+#   https:
+#     url: http://proxy.com:1234
+#     credentialSecretRef: proxy-auth # a secret with `username` and `password` keys
+#   noProxy:
+#     - example.com
+#     - example.org
 
 ## Container mode is an object that provides out-of-box configuration
 ## for dind and kubernetes mode. Template will be modified as documented under the
@@ -404,7 +405,6 @@ template:
 
 # Overrides the default `.Release.Namespace` for all resources in this chart.
 namespaceOverride: ""
-
 ## Optional annotations and labels applied to all resources created by helm installation
 ##
 ## Annotations applied to all resources created by this helm chart. Annotations will not override the default ones, so make sure
@@ -464,3 +464,7 @@ namespaceOverride: ""
 #       key: value
 #     annotations:
 #       key: value
+
+# dind:
+#   additionalVolumeMounts: []
+#   additionalEnvs: []

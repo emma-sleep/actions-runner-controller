@@ -1,3 +1,17 @@
+# Emma Fork
+
+This is a fork of the [Actions Runner Controller](https://github.com/actions/actions-runner-controller) repository, which is a Kubernetes operator that orchestrates and scales self-hosted runners for GitHub Actions.
+
+This fork is maintained by the Emma Developer Experience team to support our GitHub Actions infrastructure.
+
+## List of changes
+
+- Github Runner Scale set Docker in Docker image allows additional configuration for volume mounts and environment variables.
+
+## Where to find changes
+
+All changes are made available in tags/branches prefixed with `emma-sleep`. A forked version of `gha-runner-scale-set-0.10.1` would be tagged as `emma-sleep/gha-runner-scale-set-0.10.2`, notice the version number is incremented by one following [Semantic Versioning](https://semver.org/).
+
 # Actions Runner Controller (ARC)
 
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6061/badge)](https://bestpractices.coreinfrastructure.org/projects/6061)

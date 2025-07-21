@@ -96,7 +96,7 @@ volumeMounts:
 {{- end }}
 
 {{- define "gha-runner-scale-set.dind-container" -}}
-image: docker:dind
+image: public.ecr.aws/docker/library/docker:dind
 args:
   - dockerd
   - --host=unix:///var/run/docker.sock
@@ -104,6 +104,9 @@ args:
 env:
   - name: DOCKER_GROUP_GID
     value: "123"
+  {{- with .Values.dind.additionalEnvs -}}
+  {{ toYaml . | nindent 2 }}
+  {{- end }}
 securityContext:
   privileged: true
 volumeMounts:
@@ -113,6 +116,9 @@ volumeMounts:
     mountPath: /var/run
   - name: dind-externals
     mountPath: /home/runner/externals
+  {{- with .Values.dind.additionalVolumeMounts -}}
+  {{ toYaml . | nindent 2 }}
+  {{- end }}
 {{- end }}
 
 {{- define "gha-runner-scale-set.dind-volume" -}}

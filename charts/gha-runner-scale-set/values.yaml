@@ -1,6 +1,6 @@
 ## githubConfigUrl is the GitHub url for where you want to configure runners
 ## ex: https://github.com/myorg/myrepo or https://github.com/myorg
-githubConfigUrl: ""
+githubConfigUrl: "changeme"
 
 ## githubConfigSecret is the k8s secret information to use when authenticating via the GitHub API.
 ## You can choose to supply:
@@ -12,7 +12,7 @@ githubConfigUrl: ""
 githubConfigSecret:
   # Example:
   # github_token: "ghp_sampleSampleSampleSampleSampleSample"
-  github_token: ""
+  github_token: "test"
 #
 ## (Variation B) When using a GitHub App, the syntax is as follows:
 # githubConfigSecret:

@@ -428,6 +428,10 @@ template:
 #   namespace: arc-system
 #   name: test-arc-gha-runner-scale-set-controller
 
+# Placeholder for CI test, please configure or remove the controllerServiceAccount value above before installing the chart in production environment.
+controllerServiceAccount:
+  name: test-arc-gha-runner-scale-set-controller
+
 # Overrides the default `.Release.Namespace` for all resources in this chart.
 namespaceOverride: ""
 

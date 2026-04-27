@@ -1,6 +1,6 @@
 ## githubConfigUrl is the GitHub url for where you want to configure runners
 ## ex: https://github.com/myorg/myrepo or https://github.com/myorg or https://github.com/enterprises/myenterprise
-githubConfigUrl: ""
+githubConfigUrl: "changeme"
 
 scaleSetLabels: []
 
@@ -14,7 +14,7 @@ scaleSetLabels: []
 githubConfigSecret:
   # Example:
   # github_token: "ghp_sampleSampleSampleSampleSampleSample"
-  github_token: ""
+  github_token: "test"
 #
 ## (Variation B) When using a GitHub App, the syntax is as follows:
 # githubConfigSecret:
@@ -427,6 +427,11 @@ template:
 # controllerServiceAccount:
 #   namespace: arc-system
 #   name: test-arc-gha-runner-scale-set-controller
+
+# Placeholder for CI test, please configure or remove the controllerServiceAccount value above before installing the chart in production environment.
+controllerServiceAccount:
+  namespace: test-namespace
+  name: test-arc-gha-runner-scale-set-controller
 
 # Overrides the default `.Release.Namespace` for all resources in this chart.
 namespaceOverride: ""

@@ -22,7 +22,7 @@ func (r *testResourceReader) Get(_ context.Context, key client.ObjectKey, obj cl
 		return &kerrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonNotFound}}
 	}
 	v := reflect.ValueOf(obj)
-	if v.Kind() != reflect.Ptr {
+	if v.Kind() != reflect.Pointer {
 		return errors.New("obj must be a pointer")
 	}
 

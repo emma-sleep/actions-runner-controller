@@ -64,6 +64,9 @@ func main() {
 		defer cancel()
 		defer wg.Done()
 
+		// Run loops forever and only ever returns a non-nil error, but keep the
+		// check so a future nil return is handled correctly.
+		// nolint:staticcheck // SA4023
 		if err := fwd.Run(ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "problem running forwarder: %v\n", err)
 		}

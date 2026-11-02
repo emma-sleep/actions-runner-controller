@@ -7,15 +7,30 @@ on:
     branches: [master]
     types: [opened]
 
+# the write permissions are granted to the job which comments
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   check_for_first_interaction:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write # comments on the first issue
+      pull-requests: write # comments on the first pull request
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/first-interaction@main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          # no later step of this job pushes to git
+          persist-credentials: false
+      - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             Hello! Thank you for filing an issue.
 
             The maintainers will triage your issue shortly.
@@ -23,7 +38,7 @@ jobs:
             In the meantime, please take a look at the [troubleshooting guide](https://github.com/actions/actions-runner-controller/blob/master/TROUBLESHOOTING.md) for bug reports.
             
             If this is a feature request, please review our [contribution guidelines](https://github.com/actions/actions-runner-controller/blob/master/CONTRIBUTING.md).
-          pr-message: |
+          pr_message: |
             Hello! Thank you for your contribution.
 
             Please review our [contribution guidelines](https://github.com/actions/actions-runner-controller/blob/master/CONTRIBUTING.md) to understand the project's testing and code conventions.

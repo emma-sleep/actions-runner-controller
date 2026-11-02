@@ -13,6 +13,9 @@ jobs:
   # version and sets them as outputs.
   check_versions:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     env:
       GH_TOKEN: ${{ github.token }}
     outputs:
@@ -21,12 +24,15 @@ jobs:
       container_hooks_current_version: ${{ steps.container_hooks_versions.outputs.container_hooks_current_version }}
       container_hooks_latest_version: ${{ steps.container_hooks_versions.outputs.container_hooks_latest_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # no later step of this job pushes to git
+          persist-credentials: false
 
       - name: Get runner current and latest versions
         id: runner_versions
         run: |
-          CURRENT_VERSION="$(echo -n $(cat runner/VERSION | grep 'RUNNER_VERSION=' | cut -d '=' -f2))"
+          CURRENT_VERSION="$(echo -n "$(cat runner/VERSION | grep 'RUNNER_VERSION=' | cut -d '=' -f2)")"
           echo "Current version: $CURRENT_VERSION"
           echo runner_current_version=$CURRENT_VERSION >> $GITHUB_OUTPUT
 
@@ -37,7 +43,7 @@ jobs:
       - name: Get container-hooks current and latest versions
         id: container_hooks_versions
         run: |
-          CURRENT_VERSION="$(echo -n $(cat runner/VERSION | grep 'RUNNER_CONTAINER_HOOKS_VERSION=' | cut -d '=' -f2))"
+          CURRENT_VERSION="$(echo -n "$(cat runner/VERSION | grep 'RUNNER_CONTAINER_HOOKS_VERSION=' | cut -d '=' -f2)")"
           echo "Current version: $CURRENT_VERSION"
           echo container_hooks_current_version=$CURRENT_VERSION >> $GITHUB_OUTPUT
 
@@ -50,6 +56,10 @@ jobs:
   # it sets a PR name as output.
   check_pr:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     needs: check_versions
     if: needs.check_versions.outputs.runner_current_version != needs.check_versions.outputs.runner_latest_version || needs.check_versions.outputs.container_hooks_current_version != needs.check_versions.outputs.container_hooks_latest_version
     outputs:
@@ -58,13 +68,16 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: debug
-        run:
+        run: |
           echo "RUNNER_CURRENT_VERSION=${{ needs.check_versions.outputs.runner_current_version }}"
           echo "RUNNER_LATEST_VERSION=${{ needs.check_versions.outputs.runner_latest_version }}"
           echo "CONTAINER_HOOKS_CURRENT_VERSION=${{ needs.check_versions.outputs.container_hooks_current_version }}"
           echo "CONTAINER_HOOKS_LATEST_VERSION=${{ needs.check_versions.outputs.container_hooks_latest_version }}"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # no later step of this job pushes to git
+          persist-credentials: false
 
       - name: PR Name
         id: pr_name
@@ -102,6 +115,7 @@ jobs:
   # the changes and opens a pull request as `github-actions` bot.
   update_version:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - check_versions
       - check_pr
@@ -119,7 +133,7 @@ jobs:
       PR_NAME: ${{ needs.check_pr.outputs.pr_name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: New branch
         run: git checkout -b update-runner-"$(date +%Y-%m-%d)"

@@ -38,17 +38,28 @@ runs:
     - name: Queue test workflow
       shell: bash
       id: queue_workflow
+      env:
+        REPO_OWNER: ${{ inputs.repo-owner }}
+        REPO_NAME: ${{ inputs.repo-name }}
+        WORKFLOW_FILE: ${{ inputs.workflow-file }}
+        AUTH_TOKEN: ${{ inputs.auth-token }}
+        ARC_NAME: ${{ inputs.arc-name }}
       run: |
-        queue_time=`date +%FT%TZ`
+        queue_time=$(date +%FT%TZ)
         echo "queue_time=$queue_time" >> $GITHUB_OUTPUT
-        curl -X POST https://api.github.com/repos/${{inputs.repo-owner}}/${{inputs.repo-name}}/actions/workflows/${{inputs.workflow-file}}/dispatches \
+        curl -X POST "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
         -H "Accept: application/vnd.github.v3+json" \
-        -H "Authorization: token ${{inputs.auth-token}}" \
-        -d '{"ref": "main", "inputs": { "arc_name": "${{inputs.arc-name}}" } }'
+        -H "Authorization: token ${AUTH_TOKEN}" \
+        -d "{\"ref\": \"main\", \"inputs\": { \"arc_name\": \"${ARC_NAME}\" } }"
 
     - name: Fetch workflow run & job ids
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
       id: query_workflow
+      env:
+        REPO_OWNER: ${{ inputs.repo-owner }}
+        REPO_NAME: ${{ inputs.repo-name }}
+        WORKFLOW_FILE: ${{ inputs.workflow-file }}
+        ARC_NAME: ${{ inputs.arc-name }}
       with:
         script: |
           // Try to find the workflow run triggered by the previous step using the workflow_dispatch event.
@@ -58,9 +69,9 @@ runs:
           function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms))
           }
-          const owner = '${{inputs.repo-owner}}'
-          const repo = '${{inputs.repo-name}}'
-          const workflow_id = '${{inputs.workflow-file}}'
+          const owner = process.env.REPO_OWNER
+          const repo = process.env.REPO_NAME
+          const workflow_id = process.env.WORKFLOW_FILE
           let workflow_run_id = 0
           let workflow_job_id = 0
           let workflow_run_html_url = ""
@@ -89,7 +100,7 @@ runs:
                     let workflowJob = listJobResponse.data.jobs[j]
                     console.log(`Check if workflow job ${workflowJob.id} is triggered by us.`)
                     console.log(JSON.stringify(workflowJob.labels));
-                    if (workflowJob.labels.includes('${{inputs.arc-name}}')) {
+                    if (workflowJob.labels.includes(process.env.ARC_NAME)) {
                       console.log(`Workflow job ${workflowJob.id} (Run id: ${workflowJob.run_id}) is triggered by us.`)
                       workflow_run_id = workflowJob.run_id
                       workflow_job_id = workflowJob.id
@@ -110,7 +121,7 @@ runs:
             }
           }
           if (workflow_job_id == 0) {
-            core.setFailed(`Can't find workflow run and workflow job triggered to 'runs-on ${{inputs.arc-name}}'`)
+            core.setFailed(`Can't find workflow run and workflow job triggered to 'runs-on ${process.env.ARC_NAME}'`)
           } else {
             core.setOutput('workflow_run', workflow_run_id);
             core.setOutput('workflow_job', workflow_job_id);
@@ -128,14 +139,18 @@ runs:
 
     - name: Wait for workflow to start running
       if: inputs.wait-to-running == 'true' && inputs.wait-to-finish == 'false'
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+      env:
+        REPO_OWNER: ${{ inputs.repo-owner }}
+        REPO_NAME: ${{ inputs.repo-name }}
+        ARC_NAME: ${{ inputs.arc-name }}
       with:
         script: |
           function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms))
           }
-          const owner = '${{inputs.repo-owner}}'
-          const repo = '${{inputs.repo-name}}'
+          const owner = process.env.REPO_OWNER
+          const repo = process.env.REPO_NAME
           const workflow_run_id = ${{steps.query_workflow.outputs.workflow_run}}
           const workflow_job_id = ${{steps.query_workflow.outputs.workflow_job}}
           let count = 0
@@ -152,19 +167,23 @@ runs:
               return
             }
           }
-          core.setFailed(`The triggered workflow run didn't start properly using ${{inputs.arc-name}}`)
+          core.setFailed(`The triggered workflow run didn't start properly using ${process.env.ARC_NAME}`)
 
     - name: Wait for workflow to finish successfully
       if: inputs.wait-to-finish == 'true'
-      uses: actions/github-script@v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+      env:
+        REPO_OWNER: ${{ inputs.repo-owner }}
+        REPO_NAME: ${{ inputs.repo-name }}
+        ARC_NAME: ${{ inputs.arc-name }}
       with:
         script: |
           // Wait 5 minutes and make sure the workflow run we triggered completed with result 'success'
           function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms))
           }
-          const owner = '${{inputs.repo-owner}}'
-          const repo = '${{inputs.repo-name}}'
+          const owner = process.env.REPO_OWNER
+          const repo = process.env.REPO_NAME
           const workflow_run_id = ${{steps.query_workflow.outputs.workflow_run}}
           const workflow_job_id = ${{steps.query_workflow.outputs.workflow_job}}
           let count = 0
@@ -186,14 +205,16 @@ runs:
               }
             }
           }
-          core.setFailed(`The triggered workflow run didn't finish properly using ${{inputs.arc-name}}`)
+          core.setFailed(`The triggered workflow run didn't finish properly using ${process.env.ARC_NAME}`)
 
     - name: Gather listener logs
       shell: bash
       if: always()
+      env:
+        ARC_CONTROLLER_NAMESPACE: ${{ inputs.arc-controller-namespace }}
       run: |
         LISTENER_POD="$(kubectl get autoscalinglisteners.actions.github.com -n arc-systems -o jsonpath='{.items[*].metadata.name}')"
-        kubectl logs $LISTENER_POD -n ${{inputs.arc-controller-namespace}}
+        kubectl logs $LISTENER_POD -n "${ARC_CONTROLLER_NAMESPACE}"
     
     - name: Gather coredns logs
       shell: bash
@@ -204,12 +225,17 @@ runs:
     - name: cleanup
       if: inputs.wait-to-finish == 'true'
       shell: bash
+      env:
+        ARC_NAME: ${{ inputs.arc-name }}
+        ARC_NAMESPACE: ${{ inputs.arc-namespace }}
       run: |
-        helm uninstall ${{ inputs.arc-name }} --namespace ${{inputs.arc-namespace}} --debug
-        kubectl wait --timeout=30s --for=delete AutoScalingRunnerSet -n ${{inputs.arc-namespace}} -l app.kubernetes.io/instance=${{ inputs.arc-name }}
+        helm uninstall "${ARC_NAME}" --namespace "${ARC_NAMESPACE}" --debug
+        kubectl wait --timeout=30s --for=delete AutoScalingRunnerSet -n "${ARC_NAMESPACE}" -l "app.kubernetes.io/instance=${ARC_NAME}"
 
     - name: Gather controller logs
       shell: bash
       if: always()
+      env:
+        ARC_CONTROLLER_NAMESPACE: ${{ inputs.arc-controller-namespace }}
       run: |
-        kubectl logs deployment/arc-gha-rs-controller -n ${{inputs.arc-controller-namespace}}
+        kubectl logs deployment/arc-gha-rs-controller -n "${ARC_CONTROLLER_NAMESPACE}"

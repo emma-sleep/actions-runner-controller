@@ -17,9 +17,8 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
-  packages: write
+# the write permission is granted only to the job which creates the release
+permissions: {}
 
 env:
   TARGET_ORG: actions-runner-controller
@@ -27,42 +26,56 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}
-  cancel-in-progress: true
+  # a release must run to the end, a newer run waits instead of cancelling it
+  cancel-in-progress: false
 
 jobs:
   release-controller:
     name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # ghr creates the GitHub release and uploads its artifacts
     # gha-runner-scale-set has its own release workflow.
     # We don't want to publish a new actions-runner-controller image
     # we release gha-runner-scale-set.
     if: ${{ !startsWith(github.event.inputs.release_tag_name, 'gha-runner-scale-set-') }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # no later step of this job pushes to git
+          persist-credentials: false
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
+          # a release job must not restore a cache another run could have poisoned
+          cache: false
 
       - name: Install tools
         run: |
           curl -L -O https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.2.0/kubebuilder_2.2.0_linux_amd64.tar.gz
           tar zxvf kubebuilder_2.2.0_linux_amd64.tar.gz
           sudo mv kubebuilder_2.2.0_linux_amd64 /usr/local/kubebuilder
-          curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          # kustomize pinned to v5.8.3 (the version the install script resolved to) and verified by its sha256
+          curl -fsSL -o kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.3/kustomize_v5.8.3_linux_amd64.tar.gz
+          echo "cb9e31198d3f63b44848bd0afc4c8efc56e6cfef9c93a4a39a211940e6decd61  kustomize.tar.gz" | sha256sum -c -
+          tar zxvf kustomize.tar.gz kustomize
           sudo mv kustomize /usr/local/bin
           curl -L -O https://github.com/tcnksm/ghr/releases/download/v0.13.0/ghr_v0.13.0_linux_amd64.tar.gz
           tar zxvf ghr_v0.13.0_linux_amd64.tar.gz
           sudo mv ghr_v0.13.0_linux_amd64/ghr /usr/local/bin
 
       - name: Set version env variable
+        env:
+          RELEASE_TAG_NAME: ${{ inputs.release_tag_name }}
         run: |
           # Define the release tag name based on the event type
           if [[ "${{ github.event_name }}" == "release" ]]; then
             echo "VERSION=$(cat ${GITHUB_EVENT_PATH} | jq -r '.release.tag_name')" >> $GITHUB_ENV
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "VERSION=${{ inputs.release_tag_name }}" >> $GITHUB_ENV
+            echo "VERSION=${RELEASE_TAG_NAME}" >> $GITHUB_ENV
           fi
 
       - name: Upload artifacts
@@ -73,11 +86,14 @@ jobs:
 
       - name: Get Token
         id: get_workflow_token
-        uses: peter-murray/workflow-application-token-action@d17e3a9a36850ea89f35db16c1067dd2b68ee343
+        uses: peter-murray/workflow-application-token-action@dad2b81e50ce3edeb5f3b7ffbd79f731368bd668 # v5.1.1
         with:
           application_id: ${{ secrets.ACTIONS_ACCESS_APP_ID }}
           application_private_key: ${{ secrets.ACTIONS_ACCESS_PK }}
           organization: ${{ env.TARGET_ORG }}
+          # repository_dispatch on the releases repository needs contents write
+          permissions: contents:write
+          revoke_token: 'true'
 
       - name: Resolve push to registries
         run: |
@@ -90,6 +106,7 @@ jobs:
 
       - name: Trigger Build And Push Images To Registries
         run: |
+          set -o pipefail
           # Authenticate
           gh auth login --with-token <<< ${{ steps.get_workflow_token.outputs.token }}
 
@@ -99,11 +116,13 @@ jobs:
 
       - name: Job summary
         run: |
-          echo "The [publish-arc](https://github.com/actions-runner-controller/releases/blob/main/.github/workflows/publish-arc.yaml) workflow has been triggered!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Parameters:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Release tag: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Push to registries: ${{ env.PUSH_TO_REGISTRIES }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:**" >> $GITHUB_STEP_SUMMARY
-          echo "[https://github.com/actions-runner-controller/releases/actions/workflows/publish-arc.yaml](https://github.com/actions-runner-controller/releases/actions/workflows/publish-arc.yaml)" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "The [publish-arc](https://github.com/actions-runner-controller/releases/blob/main/.github/workflows/publish-arc.yaml) workflow has been triggered!"
+            echo ""
+            echo "**Parameters:**"
+            echo "- Release tag: ${{ env.VERSION }}"
+            echo "- Push to registries: ${{ env.PUSH_TO_REGISTRIES }}"
+            echo ""
+            echo "**Status:**"
+            echo "[https://github.com/actions-runner-controller/releases/actions/workflows/publish-arc.yaml](https://github.com/actions-runner-controller/releases/actions/workflows/publish-arc.yaml)"
+          } >> $GITHUB_STEP_SUMMARY
